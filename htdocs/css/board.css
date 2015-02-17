@@ -1,0 +1,15 @@
+.card {
+	width: 215px;
+	height: 400px;
+	font-size: 13em;
+	background-color: red;
+	border: 2px solid;
+	border-radius: 25px;
+	position: relative;
+	float: left;
+	margin: 10px;
+}
+
+.cardContents {
+	display: block;
+}
