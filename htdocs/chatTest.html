@@ -58,12 +58,33 @@
         }
       });
 
+      var Messages = [];
       var ChatComponent = React.createClass({
+        getInitialState: function() {
+          var s = {
+            messages: []
+          };
+
+          return s;
+        },
+        componentWillMount: function() {
+          socket.on('chat message', this.handleMessageReceived);
+        },
+        handleMessageReceived: function(msg) {
+          var m = {key:Messages.length,text:msg}
+          Messages.push(m);
+          console.log('chat message received: ' + msg);
+          this.setState({messages:Messages});
+        },
+        handleMessageSent: function(newMsg) {          
+          socket.emit('chat message', newMsg);
+          console.log('chat message broadcast: ' + newMsg);
+        },
         render: function() {
           return (
             <div>
-              <MessagesList messages={[{key:0,text:"this is a test"}]} />
-              <MessageSubmission />
+              <MessagesList messages={this.state.messages} />
+              <MessageSubmission onSubmit={this.handleMessageSent} />
             </div>
           );
         }
