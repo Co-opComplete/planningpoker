@@ -5,18 +5,13 @@
 var Card = React.createClass({
  	getInitialState: function() {
  		  var s = {};
- 		  if(typeof(this.props.value) !== "undefined") {
- 		  	s.value = this.props.value;
- 		  } else {
- 		  	s.value = 99;
- 		  }
           return s;
         },
  	render: function() {
           return (
             <div className="card">
               <span className="cardContents">
-                {this.state.value}
+                {this.props.value}
               </span>
             </div>
           );

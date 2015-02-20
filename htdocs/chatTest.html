@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hello World</title>
+    <script src="build/react.js"></script>
+    <script src="build/JSXTransformer.js"></script>
+    <script src="https://cdn.socket.io/socket.io-1.3.4.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+  </head>
+  <body>
+    <div id="example"></div>
+
+    <script type="text/jsx">
+      var socket = io();
+      var MessageItem = React.createClass({
+        render: function() {
+          return (
+            <li>{this.props.text}</li>
+          );
+        }
+      });
+
+      var MessagesList = React.createClass({
+        render: function() {
+          var renderItem = function(itemObj) {
+            return (<MessageItem text={itemObj.text} />);
+          };
+          return (
+            <ul>
+              {this.props.messages.map(renderItem)}
+            </ul>
+          );
+        }
+      });
+
+      var MessageSubmission = React.createClass({
+        getInitialState: function() {
+          return {value: ''};
+        },
+        handleSubmit: function(event) {
+          event.preventDefault();
+          socket.emit('chat message', this.state.value);
+          console.log('chat message broadcast: ' + this.state.value);
+          this.setState({value: ''});
+        },
+        handleChange: function(event) {
+          this.setState({value: event.target.value});
+          console.log('new Value: ' + this.state.value);
+        },
+        render: function() {
+          var value = this.state.value;
+          return (
+            <form action="#" onSubmit={this.handleSubmit}>
+              <input type="text" autoComplete="off" value={value} onChange={this.handleChange} />
+              <button type="submit">Send</button>
+            </form>
+          );
+        }
+      });
+
+      var ChatComponent = React.createClass({
+        render: function() {
+          return (
+            <div>
+              <MessagesList messages={[{key:0,text:"this is a test"}]} />
+              <MessageSubmission />
+            </div>
+          );
+        }
+      });
+
+      React.render(
+        <ChatComponent />,
+        document.getElementById('example')
+      );
+    </script>
+  </body>
+</html>
