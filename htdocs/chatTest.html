@@ -4,18 +4,29 @@
     <title>Hello World</title>
     <script src="build/react.js"></script>
     <script src="build/JSXTransformer.js"></script>
-    <script src="https://cdn.socket.io/socket.io-1.3.4.js"></script>
+    <script src="js/socket.io.js"></script>
     <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
   </head>
   <body>
     <div id="example"></div>
 
-    <script type="text/jsx">
+    <script type="text/javascript">
       var socket = io();
+      /*
+      socket.on('chat message', function(msg){
+        console.log(msg);
+      });
+      */
+    </script>
+
+    <script type="text/jsx">
       var MessageItem = React.createClass({
         render: function() {
           return (
-            <li>{this.props.text}</li>
+            <li key={this.props.key}>
+              <span className='userName'>{this.props.userName}</span> 
+              <span className='messageText'>{this.props.text}</span>
+            </li>
           );
         }
       });
@@ -23,12 +34,16 @@
       var MessagesList = React.createClass({
         render: function() {
           var renderItem = function(itemObj) {
-            return (<MessageItem text={itemObj.text} />);
+            return (
+              <MessageItem key={itemObj.key} userName={itemObj.userName} text={itemObj.text} />
+              );
           };
           return (
-            <ul>
-              {this.props.messages.map(renderItem)}
-            </ul>
+            <div className='messages'>
+              <ul>
+                {this.props.messages.map(renderItem)}
+              </ul>
+            </div>
           );
         }
       });
@@ -39,13 +54,12 @@
         },
         handleSubmit: function(event) {
           event.preventDefault();
-          socket.emit('chat message', this.state.value);
-          console.log('chat message broadcast: ' + this.state.value);
+          this.props.handler(this.props.channel, this.state.value);
           this.setState({value: ''});
         },
         handleChange: function(event) {
           this.setState({value: event.target.value});
-          console.log('new Value: ' + this.state.value);
+          //console.log('new Value: ' + this.state.value);
         },
         render: function() {
           var value = this.state.value;
@@ -58,33 +72,191 @@
         }
       });
 
+      var UserItem = React.createClass({
+        render: function() {
+          return (
+            <li key={this.props.key}>
+              <span className='userName'>{this.props.userName}</span>
+            </li>
+          );
+        }
+      });
+
+      var UserList = React.createClass({
+        render: function() {
+          var renderItem = function(itemObj) {
+            return (<UserItem key={itemObj.key} userName={itemObj.userName} />);
+          };
+          return (
+            <div className='userList'>
+              <span className='title'>Users</span>
+              <ul>
+                {this.props.users.map(renderItem)}
+              </ul>
+            </div>
+          );
+        }
+      });
+
+      var handleUtilityEvent = function(eventName) {
+        console.log('Event: ' + arguments.length + ' - ' + JSON.stringify(arguments));
+        
+        if(eventName === 'chat join') {
+          this.handleUserJoinReceived(arguments[1]);
+        } else if(eventName === 'chat rename') {
+          this.handleUserChangeReceived(arguments[1].oldName, arguments[1].newName);
+        } else if(eventName === 'chat disconnect') {
+          this.handleDisconnectReceived(arguments[1]);
+        } else if(eventName === 'chat users') {
+          this.handleUsersList(arguments[1]);
+        }
+      };
+
+      var createUtilityEventHandler = function(eventName, handlerFunc, self) {
+        var socketEventHandler = function() {
+          // clone arguments array & insert event name as first element
+          var newArgs = [eventName];
+          var len = arguments.length, i;
+          newArgs.length = len+1;
+          for(i = 0; i < len; ++i) {
+            newArgs[i+1] = arguments[i];
+          }
+
+          if(typeof(handlerFunc) !== "undefined") {
+            handlerFunc.apply(self, newArgs);  
+          }
+        };
+
+        socket.on(eventName, socketEventHandler);
+      };
+
+      var findUserByName = function(userName) {
+        var len = Users.length, i, currUser;
+        for(i = 0; i < len; ++i) {
+          currUser = Users[i];
+          if(currUser.value === userName) {
+            return {'index':i, 'user':currUser};
+          }
+        }
+
+        return undefined;
+      };
+
       var Messages = [];
+      var Users = [];
+      var userTopId = -1;
+
       var ChatComponent = React.createClass({
         getInitialState: function() {
           var s = {
-            messages: []
+            messages: [],
+            users: [],
+            currUserName: ''
           };
 
           return s;
         },
         componentWillMount: function() {
+          //console.log('handleUtilityEvent: ' + handleUtilityEvent);
           socket.on('chat message', this.handleMessageReceived);
+          createUtilityEventHandler('chat users', handleUtilityEvent, this);
+          createUtilityEventHandler('chat join', handleUtilityEvent, this);
+          createUtilityEventHandler('chat rename', handleUtilityEvent, this);
+          createUtilityEventHandler('chat disconnect', handleUtilityEvent, this);
+
+          socket.emit('chat request state');          
         },
-        handleMessageReceived: function(msg) {
-          var m = {key:Messages.length,text:msg}
+        updateMessages: function(msg, userName) {
+          console.log('updateMessages (' + userName + '): ' + msg);
+          var m = {
+            'key':Messages.length,
+            'text':msg,
+            'userName':userName
+          };
           Messages.push(m);
-          console.log('chat message received: ' + msg);
-          this.setState({messages:Messages});
+          this.setState({'messages':Messages});
         },
-        handleMessageSent: function(newMsg) {          
-          socket.emit('chat message', newMsg);
-          console.log('chat message broadcast: ' + newMsg);
+        addUser: function(userName) {
+          var len = Users.length;
+          Users.length = len + 1;
+          Users[len] = {'key':++userTopId, 'userName':userName};
+          this.setState({'users':Users});
+        },
+        renameUser: function(oldUserName, newUserName, userEntry) {
+          if(typeof(userEntry) === 'undefined') {
+            userEntry = findUserByName(oldUserName);
+          }
+  
+          if(typeof(userEntry) !== 'undefined') {
+            userEntry.user.value = newUserName;
+            this.setState({'users':Users});
+          }
+        },
+        removeUser: function(userName) {
+          var userEntry = findUserByName(userName);
+          if(typeof(userEntry) !== 'undefined') {
+            Users.splice(userEntry.index,1);
+            this.setState({'users':Users});
+          }
+        },
+        handleMessageReceived: function(data) {
+          var msg = data.text;
+          var userName = data.userName;
+          this.updateMessages(msg, userName);
+          console.log('chat message received (' + userName + '): ' + msg);
+        },
+        handleUserJoinReceived: function(userName) {
+          var msg = 'User Joined: ' + userName;
+          this.updateMessages(msg, 'admin');
+          console.log('chat join received: ' + msg);
+
+          this.addUser(userName);
+        },
+        handleUserChangeReceived: function(oldUserName, newUserName) {
+          var msg = oldUserName + ' changed name to ' + newUserName;
+          this.updateMessages(msg, 'admin');
+          console.log('chat rename received: ' + msg);
+
+          this.renameUser(oldUserName, newUserName);
+        },
+        handleDisconnectReceived: function(userName) {
+          var msg = 'User Left: ' + userName;
+          this.updateMessages(msg, 'admin');
+          console.log('chat disconnect received: ' + msg);
+
+          this.removeUser(userName);
+        },
+        handleUsersList: function(users) {
+          console.log('chat users received: ' + users);
+          var len = users.length, i;
+          for(i = 0; i < len; ++i) {
+            this.addUser(users[i]);
+          }
+        },
+        handleMessageSent: function(channelName, newMsg) {
+          if(channelName === 'chat message') {
+            this.updateMessages(newMsg, this.state.currUserName);
+          } else if(channelName === 'chat name') {
+            var prevUserRec = findUserByName(this.state.currUserName);
+            if(typeof(prevUserRec) !== 'undefined') {
+              this.renameUser(this.state.currUserName, newMsg, prevUserRec);
+            } else {
+              this.addUser(newMsg);
+            }
+
+            this.setState({'currUserName':newMsg});
+          }
+
+          socket.emit(channelName, newMsg);
+          console.log(channelName + ' broadcast: ' + newMsg);
         },
         render: function() {
           return (
             <div>
               <MessagesList messages={this.state.messages} />
-              <MessageSubmission onSubmit={this.handleMessageSent} />
+              <MessageSubmission channel={'chat message'} handler={this.handleMessageSent} />
+              <MessageSubmission channel={'chat name'} handler={this.handleMessageSent} />
+              <UserList users={this.state.users} />
             </div>
           );
         }
