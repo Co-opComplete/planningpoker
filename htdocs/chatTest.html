@@ -12,6 +12,7 @@
 
     <script type="text/javascript">
       var socket = io();
+      localStorage.debug = 'socket.io-client*';
       /*
       socket.on('chat message', function(msg){
         console.log(msg);
@@ -99,7 +100,7 @@
       });
 
       var handleUtilityEvent = function(eventName) {
-        console.log('Event: ' + arguments.length + ' - ' + JSON.stringify(arguments));
+        //console.log('Event: ' + arguments.length + ' - ' + JSON.stringify(arguments));
         
         if(eventName === 'chat join') {
           this.handleUserJoinReceived(arguments[1]);
@@ -167,7 +168,7 @@
           socket.emit('chat request state');          
         },
         updateMessages: function(msg, userName) {
-          console.log('updateMessages (' + userName + '): ' + msg);
+          //console.log('updateMessages (' + userName + '): ' + msg);
           var m = {
             'key':Messages.length,
             'text':msg,
@@ -203,31 +204,31 @@
           var msg = data.text;
           var userName = data.userName;
           this.updateMessages(msg, userName);
-          console.log('chat message received (' + userName + '): ' + msg);
+          //console.log('chat message received (' + userName + '): ' + msg);
         },
         handleUserJoinReceived: function(userName) {
           var msg = 'User Joined: ' + userName;
           this.updateMessages(msg, 'admin');
-          console.log('chat join received: ' + msg);
+          //console.log('chat join received: ' + msg);
 
           this.addUser(userName);
         },
         handleUserChangeReceived: function(oldUserName, newUserName) {
           var msg = oldUserName + ' changed name to ' + newUserName;
           this.updateMessages(msg, 'admin');
-          console.log('chat rename received: ' + msg);
+          //console.log('chat rename received: ' + msg);
 
           this.renameUser(oldUserName, newUserName);
         },
         handleDisconnectReceived: function(userName) {
           var msg = 'User Left: ' + userName;
           this.updateMessages(msg, 'admin');
-          console.log('chat disconnect received: ' + msg);
+          //console.log('chat disconnect received: ' + msg);
 
           this.removeUser(userName);
         },
         handleUsersList: function(users) {
-          console.log('chat users received: ' + users);
+          //console.log('chat users received: ' + users);
           var len = users.length, i;
           for(i = 0; i < len; ++i) {
             this.addUser(users[i]);
@@ -248,7 +249,7 @@
           }
 
           socket.emit(channelName, newMsg);
-          console.log(channelName + ' broadcast: ' + newMsg);
+          //console.log(channelName + ' broadcast: ' + newMsg);
         },
         render: function() {
           return (
