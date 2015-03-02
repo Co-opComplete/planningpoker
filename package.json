@@ -4,6 +4,7 @@
   "description": "Scrum planning poker online",
   "dependencies": {
     "express": "^4.10.2",
-    "socket.io": "^1.3.4"
+    "socket.io": "^1.3.4",
+    "extend":"^2.0.0"
   }
 }
