@@ -235,7 +235,7 @@
           }
 
           socket.emit(channelName, newMsg);
-          //console.log(channelName + ' broadcast: ' + newMsg);
+          console.log(channelName + ' broadcast: ' + newMsg);
         },
         render: function() {
           var needsLogin = this.state.currUserName === '';
