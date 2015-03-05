@@ -11,6 +11,8 @@ var instances = {'default': {
 	'users': []
 }};
 
+console.log(usersUtil);
+
 io.on('connection', function(socket){
   console.log('EVENT: connection - ' + socket.id);
   socket.join(chatRoomName);
@@ -28,13 +30,13 @@ io.on('connection', function(socket){
 
   	if(typeof(prevEntry) !== "undefined") {
   		var prevUserRec = prevEntry.userRec;
-  		socket.broadcast.to(chatRoomName).emit('disconnect', prevUserRec.name);
-  		console.log('EVENT: disconnect - index: ' + prevEntry.index + ' - ' + JSON.stringify(prevUserRec));
+  		socket.broadcast.to(chatRoomName).emit('user disconnect', prevUserRec.name);
+  		console.log('EVENT: user disconnect - index: ' + prevEntry.index + ' - ' + JSON.stringify(prevUserRec));
 
   		userList.splice(prevEntry.index, 1);
   		console.log('EVENT: Updated User List - ' + JSON.stringify(userList));
   	} else {
-  		console.log('EVENT: disconnect error - id ' + socket.id);
+  		console.log('EVENT: user disconnect error - id ' + socket.id);
   	}
   });
 
@@ -59,7 +61,7 @@ io.on('connection', function(socket){
   });
 
   socket.on('chat message', function(msg){
-    var userEntry = findUserById(instances.default.users, socket.id);
+    var userEntry = usersUtil.findById(instances.default.users, socket.id);
     var data = {'text':msg, 'userName':''};
     if(typeof(userEntry) !== 'undefined') {
     	data.userName = userEntry.userRec.name;

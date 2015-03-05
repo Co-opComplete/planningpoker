@@ -5,7 +5,7 @@
     <script src="build/react.js"></script>
     <script src="build/JSXTransformer.js"></script>
     <script src="js/socket.io.js"></script>
-    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <link rel="stylesheet" type="text/css" href="/css/selectionTest.css">
   </head>
   <body>
     <div id="example"></div>
@@ -16,6 +16,40 @@
     </script>
 
     <script type="text/jsx">
+      var Card = React.createClass({
+        render: function() {
+            return (
+              <div className="card">
+                <span className="cardContents">
+                  {this.props.value}
+                </span>
+              </div>
+            );
+          }
+      });
+
+      var CardList = React.createClass({
+        getInitialState: function() {
+          return {
+            values: [1,2,3,5,8,13,20,40,100,'∞','?']
+          };
+        },
+        render: function() {
+          var cards = {};
+          var i = 0;
+          this.state.values.forEach(function(cardValue){
+            cards[i] = <Card value={cardValue} />
+            ++i;
+          });
+          return (
+            <div className="selectionBoard">
+              {cards}
+            </div>
+          );
+
+        }
+      });
+
       var MessageSubmission = React.createClass({
         getInitialState: function() {
           return {value: ''};
@@ -40,10 +74,35 @@
         }
       });
 
+      var CardStatusDisplay = React.createClass({
+        render: function() {
+          var classArr = ['card'];
+          classArr[1] = this.props.status;
+          var cardCSSClass = classArr.join(' ');
+          var cardContents = '';
+          if(this.props.status === 'display') {
+            cardContents = (
+              <span className="cardContents">
+                {this.props.value}
+              </span>
+              );
+          }
+          return (
+            <div className={cardCSSClass}>
+              {cardContents}
+            </div>
+          );
+        }
+      });
+
       var SelectedCardsDisplay = React.createClass({
         render: function() {
           var renderItem = function(itemObj) {
-            return (<li key={itemObj.key} userName={itemObj.userName}>User</li>);
+            return (
+              <li key={itemObj.key} userName={itemObj.userName}>
+                <CardStatusDisplay status='undecided' />
+                <div className='userName'>{itemObj.userName}</div>
+              </li>);
           };
           return (
             <div className='cardsListDisplay'>
@@ -55,14 +114,15 @@
           );
         }
       });
+
       var Login = React.createClass({
         render: function() {
           var displayClass = (this.props.shouldShow === true)?'':'hide';
-          var containerClasses = ['loginContainer', displayClass].join(' ');
+          var containerClasses = ['page', 'loginContainer', displayClass].join(' ');
 
           return (
             <div className={containerClasses}>
-              <h3>Choose Nickname</h3>
+              <h1>Choose Nickname</h1>
               <MessageSubmission channel={this.props.channel}
                 handler={this.props.handler} />
             </div>
@@ -73,12 +133,13 @@
       var SelectionBoard = React.createClass({
         render: function() {
           var displayClass = (this.props.shouldShow === true)?'':'hide';
-          var containerClasses = ['mainContainer', displayClass].join(' ');
+          var containerClasses = ['page', 'mainContainer', displayClass].join(' ');
 
           return (
             <div className={containerClasses}>
               <SelectedCardsDisplay users={this.props.users}
                 selectedCards={this.props.selectedCards} />
+              <CardList />
             </div>
           );
         }
@@ -87,13 +148,13 @@
       var handleUtilityEvent = function(eventName) {
         //console.log('Event: ' + arguments.length + ' - ' + JSON.stringify(arguments));
         
-        if(eventName === 'chat join') {
+        if(eventName === 'join') {
           this.handleUserJoinReceived(arguments[1]);
-        } else if(eventName === 'chat rename') {
+        } else if(eventName === 'name') {
           this.handleUserChangeReceived(arguments[1].oldName, arguments[1].newName);
-        } else if(eventName === 'chat disconnect') {
+        } else if(eventName === 'user disconnect') {
           this.handleDisconnectReceived(arguments[1]);
-        } else if(eventName === 'chat users') {
+        } else if(eventName === 'userlist') {
           this.handleUsersList(arguments[1]);
         }
       };
@@ -133,6 +194,9 @@
       var userTopId = -1;
 
       var AppManager = React.createClass({
+        statics: {
+          storageUserFieldName: 'planningPoker_userName'
+        },
         getInitialState: function() {
           var s = {
             messages: [],
@@ -148,10 +212,17 @@
           socket.on('chat message', this.handleMessageReceived);
           createUtilityEventHandler('userlist', handleUtilityEvent, this);
           createUtilityEventHandler('join', handleUtilityEvent, this);
-          createUtilityEventHandler('rename', handleUtilityEvent, this);
-          createUtilityEventHandler('disconnect', handleUtilityEvent, this);
+          createUtilityEventHandler('name', handleUtilityEvent, this);
+          createUtilityEventHandler('user disconnect', handleUtilityEvent, this);
 
           socket.emit('request state');          
+
+          var storedUserName = localStorage.getItem(AppManager.storageUserFieldName);
+          if(storedUserName) {
+            this.addUser(storedUserName);
+            this.setState({'currUserName':storedUserName});
+            socket.emit('name', storedUserName);
+          }
         },
         updateMessages: function(msg, userName) {
           //console.log('updateMessages (' + userName + '): ' + msg);
@@ -214,7 +285,7 @@
           this.removeUser(userName);
         },
         handleUsersList: function(users) {
-          //console.log('chat users received: ' + users);
+          console.log('chat users received: ' + users);
           var len = users.length, i;
           for(i = 0; i < len; ++i) {
             this.addUser(users[i]);
@@ -231,6 +302,7 @@
               this.addUser(newMsg);
             }
 
+            localStorage.setItem(AppManager.storageUserFieldName, newMsg);
             this.setState({'currUserName':newMsg});
           }
 
